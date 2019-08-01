@@ -1,3 +1,5 @@
+#include <Arduboy.h>
+
 #include "common.h"
 
 #if ARDUBOY_LIB_VER != 10101

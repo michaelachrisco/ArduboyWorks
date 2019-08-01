@@ -1,7 +1,7 @@
+#include <Arduboy.h>
+
 #ifndef MYARDUBOY_H
 #define MYARDUBOY_H
-
-#include <Arduboy.h>
 
 class MyArduboy : public Arduboy
 {

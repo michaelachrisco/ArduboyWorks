@@ -45,6 +45,7 @@ static void readRecord(void);
 static void drawTitleMenu(void);
 static void drawTitleRecord(void);
 static void drawTitleCredit(void);
+static boolean displayHighScores(byte file);
 
 /*  Local Variables  */
 
@@ -135,6 +136,11 @@ static uint16_t hiScore[10];
 static uint16_t playCount;
 static uint32_t playFrames;
 
+char text[16];      //General string buffer
+char initials[3];     //Initials used in high score
+byte pad,pad2,pad3;     //Button press buffer used to stop pause repeating
+byte oldpad,oldpad2,oldpad3;
+
 /*---------------------------------------------------------------------------*/
 /*                              Main Functions                               */
 /*---------------------------------------------------------------------------*/
@@ -190,7 +196,7 @@ void drawTitle(void)
             drawTitleMenu();
             break;
         case STATE_RECORD:
-            drawTitleRecord();
+            displayHighScores(2);
             break;
         case STATE_CREDIT:
             drawTitleCredit();
@@ -431,4 +437,73 @@ static void drawTitleCredit(void)
         uint8_t len = strnlen(buf, sizeof(buf));
         p += arduboy.printEx(64 - len * 3, i * 6 + 8, buf) + 1;
     }
+}
+
+//Used to delay images while reading button input
+boolean pollFireButton(int n)
+{
+  for(int i = 0; i < n; i++)
+  {
+    delay(15);
+    pad = arduboy.pressed(A_BUTTON) || arduboy.pressed(B_BUTTON);
+    if(pad == 1 && oldpad == 0)
+    {
+      oldpad3 = 1; //Forces pad loop 3 to run once
+      return true;
+    }
+    oldpad = pad;
+  }
+  return false;
+}
+
+//Function by nootropic design to display highscores
+static boolean displayHighScores(byte file)
+{
+  byte y = 10;
+  byte x = 24;
+  // Each block of EEPROM has 10 high scores, and each high score entry
+  // is 5 bytes long:  3 bytes for initials and two bytes for score.
+  int address = file*10*5;
+  byte hi, lo;
+  arduboy.clear();
+  arduboy.setCursor(32, 0);
+  arduboy.print("HIGH SCORES");
+  arduboy.display();
+
+  for(int i = 0; i < 10; i++)
+  {
+    sprintf(text, "%2d", i+1);
+    arduboy.setCursor(x,y+(i*8));
+    arduboy.print( text);
+    arduboy.display();
+    hi = EEPROM.read(address + (5*i));
+    lo = EEPROM.read(address + (5*i) + 1);
+
+    if ((hi == 0xFF) && (lo == 0xFF))
+    {
+      lastScore = 0;
+    }
+    else
+    {
+      lastScore = (hi << 8) | lo;
+    }
+
+    initials[0] = (char)EEPROM.read(address + (5*i) + 2);
+    initials[1] = (char)EEPROM.read(address + (5*i) + 3);
+    initials[2] = (char)EEPROM.read(address + (5*i) + 4);
+
+    if (lastScore > 0)
+    {
+      sprintf(text, "%c%c%c %u", initials[0], initials[1], initials[2], lastScore);
+      arduboy.setCursor(x + 24, y + (i*8));
+      arduboy.print(text);
+      arduboy.display();
+    }
+  }
+  if (pollFireButton(300))
+  {
+    return true;
+  }
+  return false;
+  arduboy.display();
 }

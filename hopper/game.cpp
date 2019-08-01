@@ -29,7 +29,7 @@ enum {
 
 #define CENTER_X        64
 #define CENTER_Y        32
-#define PI              3.141592653589793
+//#define PI              3.141592653589793
 
 enum {
     ALIGN_LEFT = 0,
