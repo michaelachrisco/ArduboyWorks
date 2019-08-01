@@ -25,6 +25,9 @@ void initTitle(void);
 bool updateTitle(void);
 void drawTitle(void);
 uint8_t setLastScore(int score, uint32_t time);
+void enterHighScore(byte file);
+
+
 
 void initGame(void);
 bool updateGame(void);

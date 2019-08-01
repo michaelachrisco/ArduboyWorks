@@ -266,6 +266,7 @@ bool updateGame(void)
                 arduboy.playScore2(soundOver, 1);
                 dprint("Game Over: score=");
                 dprintln(score);
+                enterHighScore(2);
             } else if (ignoreCnt == 0 && arduboy.buttonDown(A_BUTTON | B_BUTTON)) {
                 state = STATE_PAUSE;
                 dprintln("Pause");

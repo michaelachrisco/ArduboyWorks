@@ -46,6 +46,7 @@ static void drawTitleMenu(void);
 static void drawTitleRecord(void);
 static void drawTitleCredit(void);
 static boolean displayHighScores(byte file);
+void enterHighScore(byte file);
 
 /*  Local Variables  */
 
@@ -239,8 +240,9 @@ uint8_t setLastScore(int score, uint32_t frames)
     checkSum += playCount * 13;
     checkSum += (playFrames & 0xFFFF) * 14 + (playFrames >> 16) * 15;
     arduboy.eepWrite16(checkSum);
-
     recordState = RECORD_STORED;
+    
+    
     return r;
 }
 
@@ -506,4 +508,187 @@ static boolean displayHighScores(byte file)
   }
   return false;
   arduboy.display();
+}
+
+//Function by nootropic design to add high scores
+void enterInitials()
+{
+  char index = 0;
+
+  arduboy.clear();
+
+  initials[0] = ' ';
+  initials[1] = ' ';
+  initials[2] = ' ';
+
+  while (true)
+  {
+    arduboy.display();
+    arduboy.clear();
+
+    arduboy.setCursor(16,0);
+    arduboy.print("HIGH SCORE");
+    sprintf(text, "%u", lastScore);
+    arduboy.setCursor(88, 0);
+    arduboy.print(text);
+    arduboy.setCursor(56, 20);
+    arduboy.print(initials[0]);
+    arduboy.setCursor(64, 20);
+    arduboy.print(initials[1]);
+    arduboy.setCursor(72, 20);
+    arduboy.print(initials[2]);
+    for(byte i = 0; i < 3; i++)
+    {
+      arduboy.drawLine(56 + (i*8), 27, 56 + (i*8) + 6, 27, 1);
+    }
+    arduboy.drawLine(56, 28, 88, 28, 0);
+    arduboy.drawLine(56 + (index*8), 28, 56 + (index*8) + 6, 28, 1);
+    delay(150);
+
+    if (arduboy.pressed(LEFT_BUTTON) || arduboy.pressed(B_BUTTON))
+    {
+      index--;
+      if (index < 0)
+      {
+        index = 0;
+      } else
+      {
+        arduboy.tunes.tone(1046, 250);
+      }
+    }
+
+    if (arduboy.pressed(RIGHT_BUTTON))
+    {
+      index++;
+      if (index > 2)
+      {
+        index = 2;
+      }  else {
+        arduboy.tunes.tone(1046, 250);
+      }
+    }
+
+    if (arduboy.pressed(DOWN_BUTTON))
+    {
+      initials[index]++;
+      arduboy.tunes.tone(523, 250);
+      // A-Z 0-9 :-? !-/ ' '
+      if (initials[index] == '0')
+      {
+        initials[index] = ' ';
+      }
+      if (initials[index] == '!')
+      {
+        initials[index] = 'A';
+      }
+      if (initials[index] == '[')
+      {
+        initials[index] = '0';
+      }
+      if (initials[index] == '@')
+      {
+        initials[index] = '!';
+      }
+    }
+
+    if (arduboy.pressed(UP_BUTTON))
+    {
+      initials[index]--;
+      arduboy.tunes.tone(523, 250);
+      if (initials[index] == ' ') {
+        initials[index] = '?';
+      }
+      if (initials[index] == '/') {
+        initials[index] = 'Z';
+      }
+      if (initials[index] == 31) {
+        initials[index] = '/';
+      }
+      if (initials[index] == '@') {
+        initials[index] = ' ';
+      }
+    }
+
+    if (arduboy.pressed(A_BUTTON))
+    {
+      if (index < 2)
+      {
+        index++;
+        arduboy.tunes.tone(1046, 250);
+      } else {
+        arduboy.tunes.tone(1046, 250);
+        return;
+      }
+    }
+  }
+
+}
+
+void enterHighScore(byte file)
+{
+  // Each block of EEPROM has 10 high scores, and each high score entry
+  // is 5 bytes long:  3 bytes for initials and two bytes for score.
+  int address = file * 10 * 5;
+  byte hi, lo;
+  char tmpInitials[3];
+  unsigned int tmpScore = 0;
+
+  // High score processing
+  for(byte i = 0; i < 10; i++)
+  {
+    hi = EEPROM.read(address + (5*i));
+    lo = EEPROM.read(address + (5*i) + 1);
+    if ((hi == 0xFF) && (lo == 0xFF))
+    {
+      // The values are uninitialized, so treat this entry
+      // as a score of 0.
+      tmpScore = 0;
+    } else
+    {
+      tmpScore = (hi << 8) | lo;
+    }
+    if (lastScore > tmpScore)
+    {
+      enterInitials();
+      for(byte j=i;j<10;j++)
+      {
+        hi = EEPROM.read(address + (5*j));
+        lo = EEPROM.read(address + (5*j) + 1);
+
+        if ((hi == 0xFF) && (lo == 0xFF))
+        {
+        lastScore = 0;
+        }
+        else
+        {
+          lastScore = (hi << 8) | lo;
+        }
+
+        tmpInitials[0] = (char)EEPROM.read(address + (5*j) + 2);
+        tmpInitials[1] = (char)EEPROM.read(address + (5*j) + 3);
+        tmpInitials[2] = (char)EEPROM.read(address + (5*j) + 4);
+
+        // write score and initials to current slot
+        EEPROM.write(address + (5*j), ((lastScore >> 8) & 0xFF));
+        EEPROM.write(address + (5*j) + 1, (lastScore & 0xFF));
+        EEPROM.write(address + (5*j) + 2, initials[0]);
+        EEPROM.write(address + (5*j) + 3, initials[1]);
+        EEPROM.write(address + (5*j) + 4, initials[2]);
+
+        // tmpScore and tmpInitials now hold what we want to
+        //write in the next slot.
+        lastScore = tmpScore;
+        initials[0] = tmpInitials[0];
+        initials[1] = tmpInitials[1];
+        initials[2] = tmpInitials[2];
+      }
+
+      lastScore = 0;
+      initials[0] = ' ';
+      initials[1] = ' ';
+      initials[2] = ' ';
+
+      return;
+    }
+  }
 }
